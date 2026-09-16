@@ -93,7 +93,7 @@ int rin_xml_parser_init(RinXmlParser* parser, const uint8_t* data, size_t size,
 
 /* Returns RIN_XML_OK and fills event, RIN_XML_DONE at the document end, or a
  * negative status. Event slices point into the caller-owned input and remain
- * valid until the next parser call. */
+ * valid until the next parser call. event is cleared on DONE or failure. */
 int rin_xml_parser_next(RinXmlParser* parser, RinXmlEvent* event);
 
 /* Validate a complete document without exposing event storage. */

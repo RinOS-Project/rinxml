@@ -226,6 +226,7 @@ int rin_xml_parser_init(RinXmlParser* parser, const uint8_t* data, size_t size,
                         const RinXmlLimits* limits)
 {
     RinXmlLimits defaults;
+    if (parser != NULL) *parser = (RinXmlParser){0};
     if (parser == NULL || data == NULL || size == 0u) return RIN_XML_INVALID_ARGUMENT;
     rin_xml_limits_default(&defaults);
     if (limits != NULL) defaults = *limits;
@@ -462,6 +463,7 @@ static int xml_parse_markup(RinXmlParser* parser, RinXmlEvent* event)
 
 int rin_xml_parser_next(RinXmlParser* parser, RinXmlEvent* event)
 {
+    if (event != NULL) *event = (RinXmlEvent){0};
     if (parser == NULL || event == NULL || parser->data == NULL)
         return RIN_XML_INVALID_ARGUMENT;
     if (parser->finished != 0u) return RIN_XML_DONE;
