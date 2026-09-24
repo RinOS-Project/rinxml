@@ -68,3 +68,19 @@ The public C structs and functions are source-level interfaces without a
 separately versioned binary ABI promise. The repository contains no standalone
 build or test target; consumers integrate `xml.c` and, when needed, `svg.c`
 through their parent build.
+
+## Public API contract
+
+| Requirement | Contract |
+| --- | --- |
+| Purpose | RinXML provides a bounded, allocation-free XML event parser and a structural validator for a small Office-compatible SVG profile. |
+| Supported API | Public C interfaces are `rinxml/xml.h` for parser events and full-document validation, and `rinxml/svg.h` for the documented restricted SVG profile. The README sections above define accepted syntax and element/attribute sets. |
+| Unsupported API | This is not a complete XML processor, namespace engine, entity expander, or SVG renderer. It does not fetch external entities/resources, resolve URIs, or sanitize input for another renderer. |
+| ownership | The caller owns source bytes and parser storage. Returned names, text, and attributes are non-owning views; attribute storage is reused by the next parser call. |
+| thread-safety | One parser instance is used by one caller at a time. Separate parser instances and input buffers may be used concurrently; the parser has no mutable global state. |
+| limits | Default XML limits are 16 MiB input, depth 128, 1,048,576 elements, 64 attributes per element, 1 MiB per token, and 255-byte names. SVG defaults are 8 MiB, depth 64, 2048 elements, 8 attributes per element, and 4096 bytes of markup/text. Callers may lower limits within fixed storage bounds. |
+| errors | `RinXmlStatus` distinguishes invalid arguments, malformed input, limits, unsupported syntax/profile, success, and end of document. There is no cancellation or CPU deadline; callers should preserve byte and structural bounds. |
+| ABI stability | The public C structs and functions are source-level interfaces without a separately versioned binary ABI promise. |
+| security | DTD and external entities are rejected and no resources are loaded. Structural SVG admission is not rendering safety; keep the restricted profile and apply downstream policy. |
+| build | No standalone build system is provided. Integrate `xml.c` and, when needed, `svg.c` through the parent RinOS build. |
+| test | This repository has no standalone test target. Parent-repository CI fuzzes the parser and SVG validator with bounded generated and malformed inputs. |
