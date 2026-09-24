@@ -55,6 +55,13 @@ unsupported markup/profile, success, and end-of-document. Parsing is
 allocation-free but has no cancellation or CPU deadline; byte, element, and
 token limits remain necessary for untrusted input.
 
+The parent repository's sanitizer CI fuzzes both the event parser and SVG
+validator with generated valid and malformed seeds. Its per-input limits are
+64 KiB, depth 64, 4096 elements, 32 attributes per element, and 8192 bytes per
+text token; libFuzzer adds a two-second input timeout and a 512 MiB process RSS
+cap. The parser remains allocation-free and the host timeout is not a runtime
+deadline API.
+
 ## ABI, build, and tests
 
 The public C structs and functions are source-level interfaces without a
