@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: MIT */
 #include "include/rinxml/xml.h"
 
+#include <string.h>
+
 static int xml_space(uint8_t value)
 {
     return value == ' ' || value == '\t' || value == '\r' || value == '\n';
@@ -226,7 +228,7 @@ int rin_xml_parser_init(RinXmlParser* parser, const uint8_t* data, size_t size,
                         const RinXmlLimits* limits)
 {
     RinXmlLimits defaults;
-    if (parser != NULL) *parser = (RinXmlParser){0};
+    if (parser != NULL) memset(parser, 0, sizeof(*parser));
     if (parser == NULL || data == NULL || size == 0u) return RIN_XML_INVALID_ARGUMENT;
     rin_xml_limits_default(&defaults);
     if (limits != NULL) defaults = *limits;
@@ -463,7 +465,10 @@ static int xml_parse_markup(RinXmlParser* parser, RinXmlEvent* event)
 
 int rin_xml_parser_next(RinXmlParser* parser, RinXmlEvent* event)
 {
-    if (event != NULL) *event = (RinXmlEvent){0};
+    RinXmlEvent cleared_event = {
+        (RinXmlEventType)0, { NULL, 0u }, { NULL, 0u }, NULL, 0u, 0u, 0u
+    };
+    if (event != NULL) *event = cleared_event;
     if (parser == NULL || event == NULL || parser->data == NULL)
         return RIN_XML_INVALID_ARGUMENT;
     if (parser->finished != 0u) return RIN_XML_DONE;
