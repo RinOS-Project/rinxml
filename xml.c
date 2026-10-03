@@ -196,7 +196,7 @@ static const uint8_t* xml_find(const uint8_t* data, size_t size,
     size_t offset;
     if (data == NULL || literal == NULL || literal_size == 0u ||
         literal_size > size) return NULL;
-    for (offset = 0u; offset + literal_size <= size; ++offset) {
+    for (offset = 0u; offset <= size - literal_size; ++offset) {
         size_t index;
         for (index = 0u; index < literal_size; ++index)
             if (data[offset + index] != (uint8_t)literal[index]) break;
@@ -211,6 +211,28 @@ static int xml_name_is_namespace(RinXmlSlice name)
            (name.size > 6u && name.data[0] == 'x' && name.data[1] == 'm' &&
             name.data[2] == 'l' && name.data[3] == 'n' && name.data[4] == 's' &&
             name.data[5] == ':');
+}
+
+static int xml_parser_state_valid(const RinXmlParser* parser)
+{
+    if (parser == NULL || parser->data == NULL || parser->size == 0u ||
+        parser->offset > parser->size || parser->depth > parser->max_depth ||
+        parser->max_depth == 0u || parser->max_depth > RIN_XML_MAX_DEPTH ||
+        parser->max_elements == 0u ||
+        parser->max_attributes_per_element == 0u ||
+        parser->max_attributes_per_element > RIN_XML_MAX_ATTRIBUTES ||
+        parser->max_text_bytes == 0u || parser->max_name_bytes == 0u ||
+        parser->element_count > parser->max_elements ||
+        parser->root_count > 1u || parser->saw_root > 1u ||
+        parser->saw_declaration > 1u || parser->finished > 1u)
+        return 0;
+    if (parser->saw_root == 0u && parser->root_count != 0u) return 0;
+    if (parser->saw_root != 0u && parser->root_count != 1u) return 0;
+    if (parser->finished != 0u &&
+        (parser->depth != 0u || parser->saw_root == 0u ||
+         parser->root_count != 1u))
+        return 0;
+    return 1;
 }
 
 void rin_xml_limits_default(RinXmlLimits* limits)
@@ -473,6 +495,7 @@ int rin_xml_parser_next(RinXmlParser* parser, RinXmlEvent* event)
     if (event != NULL) *event = cleared_event;
     if (parser == NULL || event == NULL || parser->data == NULL)
         return RIN_XML_INVALID_ARGUMENT;
+    if (!xml_parser_state_valid(parser)) return RIN_XML_MALFORMED;
     if (parser->finished != 0u) return RIN_XML_DONE;
     snapshot = *parser;
     while (parser->offset < parser->size) {
