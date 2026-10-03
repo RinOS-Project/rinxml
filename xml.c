@@ -468,22 +468,30 @@ int rin_xml_parser_next(RinXmlParser* parser, RinXmlEvent* event)
     RinXmlEvent cleared_event = {
         (RinXmlEventType)0, { NULL, 0u }, { NULL, 0u }, NULL, 0u, 0u, 0u
     };
+    RinXmlParser snapshot;
+    int status;
     if (event != NULL) *event = cleared_event;
     if (parser == NULL || event == NULL || parser->data == NULL)
         return RIN_XML_INVALID_ARGUMENT;
     if (parser->finished != 0u) return RIN_XML_DONE;
+    snapshot = *parser;
     while (parser->offset < parser->size) {
         size_t start = parser->offset;
         if (parser->data[start] != '<') {
             while (parser->offset < parser->size && parser->data[parser->offset] != '<')
                 ++parser->offset;
             if (parser->offset - start > parser->max_text_bytes ||
-                !xml_value_valid(parser->data + start, parser->offset - start))
-                return RIN_XML_LIMIT;
+                !xml_value_valid(parser->data + start, parser->offset - start)) {
+                status = RIN_XML_LIMIT;
+                goto failure;
+            }
             if (parser->depth == 0u) {
                 size_t index;
                 for (index = start; index < parser->offset; ++index)
-                    if (!xml_space(parser->data[index])) return RIN_XML_MALFORMED;
+                    if (!xml_space(parser->data[index])) {
+                        status = RIN_XML_MALFORMED;
+                        goto failure;
+                    }
                 continue;
             }
             event->type = RIN_XML_EVENT_TEXT;
@@ -497,18 +505,35 @@ int rin_xml_parser_next(RinXmlParser* parser, RinXmlEvent* event)
             event->self_closing = 0u;
             return RIN_XML_OK;
         }
-        if (parser->offset + 1u >= parser->size) return RIN_XML_MALFORMED;
-        if (parser->data[parser->offset + 1u] == '/')
-            return xml_parse_close(parser, event);
+        if (parser->offset + 1u >= parser->size) {
+            status = RIN_XML_MALFORMED;
+            goto failure;
+        }
+        if (parser->data[parser->offset + 1u] == '/') {
+            status = xml_parse_close(parser, event);
+            if (status != RIN_XML_OK) goto failure;
+            return status;
+        }
         if (parser->data[parser->offset + 1u] == '!' ||
-            parser->data[parser->offset + 1u] == '?')
-            return xml_parse_markup(parser, event);
-        return xml_parse_start(parser, event);
+            parser->data[parser->offset + 1u] == '?') {
+            status = xml_parse_markup(parser, event);
+            if (status != RIN_XML_OK) goto failure;
+            return status;
+        }
+        status = xml_parse_start(parser, event);
+        if (status != RIN_XML_OK) goto failure;
+        return status;
     }
-    if (parser->depth != 0u || parser->saw_root == 0u || parser->root_count != 1u)
-        return RIN_XML_MALFORMED;
+    if (parser->depth != 0u || parser->saw_root == 0u || parser->root_count != 1u) {
+        status = RIN_XML_MALFORMED;
+        goto failure;
+    }
     parser->finished = 1u;
     return RIN_XML_DONE;
+
+failure:
+    *parser = snapshot;
+    return status;
 }
 
 int rin_xml_validate(const uint8_t* data, size_t size,
